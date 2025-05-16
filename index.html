@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Planet Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+            color: #f3f4f6; /* Tailwind gray-100 */
+            overscroll-behavior: none;
+        }
+        #planet-visualization-container {
+            min-height: 350px;
+            height: 60vh; 
+            max-height: 500px; 
+            width: 100%;
+            background-color: #000000;
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            touch-action: none; 
+        }
+        #planet-info-table td {
+            border: 1px solid #374151; /* Tailwind gray-700 */
+            padding: 0.65rem 0.75rem; /* py-2.5 px-3 */
+            text-align: left;
+            font-size: 0.875rem; /* text-sm */
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+        #planet-info-table tr td:first-child {
+            font-weight: 600; /* font-semibold */
+            color: #9ca3af; /* Tailwind gray-400 */
+            width: 40%;
+            vertical-align: top;
+        }
+        #planet-info-table tr:nth-child(odd) td {
+             background-color: #1f2937; /* Tailwind gray-800 */
+        }
+         #planet-info-table tr:nth-child(even) td {
+             background-color: #273142; /* Custom slightly lighter than gray-800 */
+        }
+        /* Style for separator rows in the info table */
+        #planet-info-table td.table-section-header {
+            background-color: #0369a1; /* Tailwind sky-700 */
+            color: #e0f2fe; /* Tailwind sky-100 */
+            font-weight: 600; /* font-semibold */
+            text-align: center !important; /* Center the text */
+        }
+
+        .btn {
+            padding: 0.65rem 1.25rem; 
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 600; /* font-semibold */
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background-color: #2563eb; color: white; } 
+        .btn-primary:hover { background-color: #1d4ed8; } 
+        .btn-primary:disabled { background-color: #4b5563; cursor: not-allowed; opacity: 0.7;} 
+        .btn-secondary { background-color: #4b5563; color: white; } 
+        .btn-secondary:hover { background-color: #374151; } 
+        .btn-danger { background-color: #dc2626; color: white; } 
+        .btn-danger:hover { background-color: #b91c1c; } 
+
+        .input-field, select.input-field {
+            background-color: #374151; border: 1px solid #4b5563; color: #f3f4f6;
+            padding: 0.5rem 0.75rem; border-radius: 0.375rem; width: 100%;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .input-field:focus, select.input-field:focus {
+            outline: none; border-color: #2563eb; 
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); 
+        }
+        #llm-chat-output {
+            height: 250px;
+            background-color: #111827; 
+            border: 1px solid #374151; 
+            border-radius: 0.375rem; 
+            padding: 0.75rem;
+            overflow-y: auto;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem; 
+            display: flex;
+            flex-direction: column;
+        }
+        #llm-chat-output > div { 
+            max-width: 80%;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem; 
+            line-height: 1.4;
+        }
+        #llm-chat-output .user-message {
+            background-color: #2563eb; color: white; 
+            margin-left: auto; align-self: flex-end;
+        }
+        #llm-chat-output .alien-message {
+            background-color: #374151; color: #e5e7eb; 
+            margin-right: auto; align-self: flex-start;
+        }
+         #llm-chat-output .system-message {
+            background-color: #5b21b6; color: #e9d5ff; 
+            text-align: center; align-self: center;
+            font-style: italic;
+            max-width: 100%;
+        }
+        #llm-chat-output .system-error-message {
+            background-color: #991b1b; color: #fecaca; 
+            text-align: center; align-self: center;
+            font-style: italic;
+            max-width: 100%;
+        }
+        .section-card {
+            background-color: #1f2937; padding: 1.5rem; 
+            border-radius: 0.5rem; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+        .section-header { /* This class is used for table section headers now */
+            font-size: 1.125rem; 
+            font-weight: 600; 
+            color: #d1d5db; 
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #374151; 
+            margin-bottom: 1rem;
+        }
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-backdrop.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: #1f2937; padding: 1.5rem; border-radius: 0.5rem; 
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2);
+            width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+            transform: scale(0.95); transition: transform 0.3s ease-in-out;
+        }
+        .modal-backdrop.active .modal-content { transform: scale(1); }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #374151; 
+        }
+        .modal-title { font-size: 1.25rem; font-weight: 600; color: #e5e7eb; } 
+        .close-button {
+            background: none; border: none; color: #9ca3af; font-size: 1.5rem; 
+            cursor: pointer; padding: 0.25rem; line-height: 1;
+        }
+        .close-button:hover { color: #e5e7eb; } 
+
+        #alien-portrait-display {
+            margin-left: auto;
+            margin-right: auto;
+            border: 2px solid #4b5563; 
+            border-radius: 0.25rem; 
+            background-color: #111827; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        /* Styles for the main alien portrait image */
+        #alien-portrait-display img { 
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        .cultural-info-category {
+            margin-bottom: 0.75rem;
+        }
+        .cultural-info-category h5 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 0.25rem;
+            text-transform: capitalize;
+        }
+        .cultural-info-category p, .cultural-info-category li {
+            color: #d1d5db;
+            margin-left: 0.5rem;
+        }
+         .cultural-info-category ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        /* Codex Styles - MODIFIED FOR HORIZONTAL SCROLL */
+        #alien-codex-content {
+            display: flex; 
+            flex-direction: row; 
+            overflow-x: auto;  
+            overflow-y: hidden; 
+            min-height: 300px;  /* MODIFIED: Increased min-height */
+            max-height: 350px; /* MODIFIED: Increased max-height */
+            padding: 0.75rem; 
+            border: 1px solid #374151; 
+            border-radius: 0.375rem; 
+            background-color: #111827; 
+            gap: 1rem; 
+        }
+        .codex-card {
+            background-color: #374151; 
+            border-radius: 0.375rem; 
+            padding: 0.75rem; 
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem; 
+            width: 200px; 
+            flex-shrink: 0; 
+        }
+        /* Styles for the portrait container within a codex card */
+        .codex-card-portrait {
+            width: 72px; 
+            height: 72px;
+            border: 1px solid #4b5563; 
+            border-radius: 0.25rem; 
+            background-color: #111827; /* Should be visible if img fails to load */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Important if img is larger or broken */
+            margin: 0 auto; 
+        }
+        /* Styles for the actual image within the codex card portrait container */
+        .codex-card-portrait img { 
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Ensures image fits and maintains aspect ratio */
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        .codex-card h4 {
+            font-size: 0.9rem; 
+            font-weight: 600; 
+            color: #e5e7eb; 
+            text-align: center;
+        }
+        .codex-card p {
+            font-size: 0.8rem; 
+            color: #d1d5db; 
+            line-height: 1.3;
+        }
+         .codex-card strong {
+            color: #9ca3af; 
+        }
+        #codex-empty-message {
+             color: #6b7280; 
+             font-style: italic;
+             text-align: center;
+             padding: 2rem;
+             width: 100%; 
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-gray-800 shadow-lg py-4">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-center text-white tracking-tight flex-grow">Random Planet Generator</h1>
+            <button id="settings-btn" class="p-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" title="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-300 hover:text-white">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 1.905c-.007.379.138.752.43.992l1.004.827a1.125 1.125 0 0 1 .26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.333.183-.582.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-1.905c.007-.379-.138-.752-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8 mt-6 space-y-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <section id="visualization-section" aria-labelledby="visualization-heading" class="section-card">
+                    <h2 id="visualization-heading" class="text-2xl font-semibold mb-4 text-gray-100">
+                        Planet Visualization: <span id="visualization-planet-name" class="text-sky-400"></span>
+                    </h2>
+                    <div id="planet-visualization-container"></div>
+                </section>
+                <section id="controls-section" aria-labelledby="controls-heading" class="section-card">
+                    <h2 id="controls-heading" class="text-xl font-semibold mb-4 text-gray-100">Controls</h2>
+                    <div class="flex flex-col sm:flex-row gap-4 items-center">
+                        <button id="generate-planet-btn" class="btn btn-primary w-full sm:w-auto flex-shrink-0">Generate New Planet</button>
+                        <div class="flex-grow w-full sm:w-auto">
+                            <label for="planet-type-select" class="sr-only">Select Planet Type:</label>
+                            <select id="planet-type-select" class="input-field w-full">
+                                <option value="random" selected>Random Type</option>
+                                <option value="terrestrial">Terrestrial</option>
+                                <option value="gas_giant">Gas Giant</option>
+                                <option value="desert">Desert Planet</option>
+                                <option value="ocean">Ocean Planet</option>
+                                <option value="lava">Lava Planet</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-400">Interaction: Drag to rotate. Scroll to zoom.</p>
+                    </div>
+                </section>
+
+                <section id="alien-codex-section" aria-labelledby="codex-heading" class="section-card">
+                    <h2 id="codex-heading" class="text-xl font-semibold mb-4 text-gray-100">Alien Codex</h2>
+                    <div id="alien-codex-content">
+                        <p id="codex-empty-message" class="w-full">No species contacted yet.</p>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="lg:col-span-1 space-y-6">
+                <section id="planet-info-section" aria-labelledby="info-heading" class="section-card">
+                    <h2 id="info-heading" class="text-2xl font-semibold mb-4 text-gray-100">Planet Information</h2>
+                    <div class="overflow-x-auto">
+                        <table id="planet-info-table" class="w-full text-sm">
+                            <caption class="sr-only">Planet Properties</caption>
+                            <tbody>
+                                <tr><td colspan="2" class="table-section-header">General</td></tr>
+                                <tr><td>Name</td><td id="info-name">-</td></tr>
+                                <tr><td>Type</td><td id="info-type">-</td></tr>
+                                <tr><td>Mass (Earths)</td><td id="info-mass">-</td></tr>
+                                <tr><td>Radius (Earths)</td><td id="info-radius">-</td></tr>
+                                <tr><td>Density (g/cm³)</td><td id="info-density">-</td></tr>
+                                <tr><td>Gravity (g)</td><td id="info-gravity">-</td></tr>
+                                <tr><td>Rotation Period (hrs)</td><td id="info-rotation">-</td></tr>
+                                <tr><td>Orbital Period (days)</td><td id="info-orbit">-</td></tr>
+                                <tr><td>Axial Tilt (°)</td><td id="info-axial-tilt">-</td></tr>
+                                <tr><td colspan="2" class="table-section-header">Atmosphere</td></tr>
+                                <tr><td>Presence</td><td id="info-atmosphere-presence">-</td></tr>
+                                <tr><td>Pressure (atm)</td><td id="info-atmosphere-pressure">-</td></tr>
+                                <tr><td>Composition</td><td id="info-atmosphere-composition">-</td></tr>
+                                <tr><td>Weather Notes</td><td id="info-atmosphere-weather">-</td></tr>
+                                <tr><td colspan="2" class="table-section-header">Surface</td></tr>
+                                <tr><td>Avg. Temperature (°C)</td><td id="info-surface-temp">-</td></tr>
+                                <tr><td>Surface Liquid</td><td id="info-surface-liquid">-</td></tr>
+                                <tr><td>Dominant Terrain</td><td id="info-surface-terrain">-</td></tr>
+                                <tr><td colspan="2" class="table-section-header">Life</td></tr>
+                                <tr><td>Probability of Life</td><td id="info-life-probability">-</td></tr>
+                                <tr><td>Detected Intelligent Life</td><td id="info-life-intelligent">-</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <section id="llm-interaction-section" aria-labelledby="llm-heading" class="section-card">
+            <h2 id="llm-heading" class="text-2xl font-semibold mb-4 text-gray-100">Contact Intelligent Life</h2>
+            <button id="contact-life-btn" class="btn btn-primary mb-4" disabled>Attempt Contact</button>
+
+            <div id="llm-chat-interface" class="hidden space-y-4">
+                <div id="llm-chat-output">
+                    </div>
+                <div class="flex gap-2 mt-3">
+                    <label for="llm-chat-input" class="sr-only">Your message:</label>
+                    <input type="text" id="llm-chat-input" class="input-field flex-grow" placeholder="Send a message...">
+                    <button id="llm-send-btn" class="btn btn-primary flex-shrink-0">Send</button>
+                </div>
+            </div>
+
+            <div id="cultural-info-tab" class="mt-6 hidden p-4 bg-gray-700 rounded-lg shadow">
+                <h3 class="text-xl font-semibold text-gray-100 mb-3 border-b border-gray-600 pb-2">Alien Species Profile</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                    <div class="md:col-span-1 flex flex-col items-center">
+                        <div id="alien-portrait-display" class="w-32 h-32 sm:w-36 sm:h-36 md:w-48 md:h-48">
+                            <p class="text-xs text-gray-500 text-center">Visual data pending...</p>
+                        </div>
+                        <button id="regenerate-portrait-btn" class="btn btn-secondary mt-2 text-xs px-3 py-1">New Portrait</button>
+                    </div>
+                    <div id="cultural-info-content-area" class="md:col-span-2 space-y-1 text-sm">
+                        <p class="text-gray-400 italic">Information about this species will be revealed through conversation.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="settings-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Settings</h3>
+                <button id="close-settings-btn" class="close-button" aria-label="Close settings modal">&times;</button>
+            </div>
+            <div class="space-y-6 mt-4">
+                <section id="api-key-modal-section" aria-labelledby="api-key-modal-heading">
+                    <h4 id="api-key-modal-heading" class="text-lg font-semibold mb-2 text-gray-300">LLM Settings</h4>
+                    <div>
+                        <label for="llm-api-key" class="block text-sm font-medium text-gray-400 mb-1">Gemini API Key:</label>
+                        <input type="password" id="llm-api-key" name="llm-api-key" class="input-field" placeholder="Enter your API Key">
+                        <button id="save-api-key-btn" class="btn btn-secondary mt-3 w-full text-sm">Save Key</button>
+                        <p class="text-xs text-gray-500 mt-2">API key is stored locally in your browser.</p>
+                    </div>
+                </section>
+
+                <section id="visual-settings-section" aria-labelledby="visual-settings-heading">
+                    <h4 id="visual-settings-heading" class="text-lg font-semibold mb-2 text-gray-300">Visual Settings</h4>
+                    <div>
+                        <label for="pixelation-slider" class="block text-sm font-medium text-gray-400 mb-1">Pixelation Amount: <span id="pixelation-value-label">6</span></label>
+                        <input type="range" id="pixelation-slider" name="pixelation-slider" min="1" max="16" value="6" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Adjusts the size of pixels (1 = none, higher = more pixelated).</p>
+                    </div>
+                </section>
+
+                <section id="save-load-section" aria-labelledby="save-load-heading">
+                    <h4 id="save-load-heading" class="text-lg font-semibold mb-2 text-gray-300">Session Data</h4>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="save-state-btn" class="btn btn-primary flex-1 text-sm">Save State</button>
+                        <button id="load-state-btn" class="btn btn-secondary flex-1 text-sm">Load Last Save</button>
+                    </div>
+                    <div class="mt-3">
+                         <button id="clear-save-btn" class="btn btn-danger w-full text-sm">Clear Saved Data</button>
+                    </div>
+                     <p class="text-xs text-gray-500 mt-2">Saves/loads planet, contact progress, and codex to browser storage.</p>
+                     <p id="save-load-feedback" class="text-xs text-green-400 mt-1 h-4"></p> 
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-8 mt-12 border-t border-gray-700">
+        <p class="text-sm text-gray-500">&copy; <span id="current-year"></span> Random Planet Generator. Created by Franco Pirinoli.</p>
+        <p class="text-xs text-gray-600 mt-1">Powered by three.js, Simplex Noise, and your imagination.</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js"
+        }
+    }
+    </script>
+    <script type="module">
+        // Import necessary Three.js modules for post-processing
+        import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/RenderPass.js';
+        import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/postprocessing/ShaderPass.js';
+        import { PixelShader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/shaders/PixelShader.js';
+
+        // Make them available globally for main.js if needed (or refactor main.js to import them)
+        if (window.THREE) {
+            window.THREE.EffectComposer = EffectComposer;
+            window.THREE.RenderPass = RenderPass;
+            window.THREE.ShaderPass = ShaderPass;
+            window.THREE.PixelShader = PixelShader;
+        } else {
+            console.error("THREE object not found before attempting to attach JSM modules. Ensure three.min.js is loaded first.");
+        }
+    </script>
+    <script type="module" src="js/main.js"></script>
+    <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
